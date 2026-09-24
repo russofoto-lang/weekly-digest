@@ -1,0 +1,38 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "digest_items",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "stato", "order": "ASCENDING" },
+        { "fieldPath": "dataAggiunta", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "digest_items",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "settimana", "order": "ASCENDING" },
+        { "fieldPath": "dataAggiunta", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "digest_items",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "stato", "order": "ASCENDING" },
+        { "fieldPath": "settimana", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "digest_items",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "stato", "order": "ASCENDING" },
+        { "fieldPath": "settimana", "order": "ASCENDING" },
+        { "fieldPath": "dataAggiunta", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
