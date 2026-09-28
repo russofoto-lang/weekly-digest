@@ -19,6 +19,7 @@ export interface DigestItem {
   dataAggiunta: Timestamp;
   stato: DigestItemStatus;
   settimana: string;
+  preferito?: true;
   tags?: DigestTag[];
   tagsManual?: true;
   troncato?: true;

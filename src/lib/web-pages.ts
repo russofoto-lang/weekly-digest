@@ -76,6 +76,9 @@ function pageShell(title: string, content: string, mode: 'ui' | 'reader' = 'ui')
       .category-link { display:flex; justify-content:space-between; padding:14px 16px; color:#222; background:#fff; border:1px solid #dedbd5; border-radius:10px; font-weight:700; text-decoration:none; }
       .delete-button { position:absolute; z-index:2; top:10px; right:10px; display:grid; width:30px; height:30px; padding:0; place-items:center; color:#756d64; background:transparent; border:0; border-radius:7px; font-size:16px; line-height:1; cursor:pointer; }
       .delete-button:hover { color:#9a3f35; background:#f4e9e7; }
+      .favorite-button { position:absolute; z-index:2; top:10px; right:44px; display:grid; width:30px; height:30px; padding:0; place-items:center; color:#8a8178; background:transparent; border:0; border-radius:7px; font-size:19px; line-height:1; cursor:pointer; }
+      .favorite-button:hover { color:#9b6a23; background:#faf1dc; }
+      .favorite-button[data-favorite="true"] { color:#b67a19; }
       .edit-button { position:absolute; z-index:2; right:43px; bottom:10px; padding:5px 8px; color:#625c54; background:#f4f1eb; border:0; border-radius:7px; font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
       .edit-button:hover { color:#222; background:#e9e4dc; }
       .edit-dialog { width:min(560px,calc(100% - 24px)); padding:0; border:0; border-radius:14px; box-shadow:0 20px 60px #0004; }
@@ -125,11 +128,13 @@ function renderCard(item: DigestItem): string {
   const badge = item.tipo === 'youtube' ? 'video' : 'articolo';
   const tags = (item.tags ?? []).map((tag) => `<a href="/categoria/${encodeURIComponent(tag)}">${escapeHtml(tag)}</a>`).join('');
   const deleteButton = `<button class="delete-button" type="button" data-delete-id="${escapeHtml(item.id)}" title="Elimina" aria-label="Elimina ${escapeHtml(item.titolo)}">🗑</button>`;
+  const favoriteButton = `<button class="favorite-button" type="button" data-favorite-id="${escapeHtml(item.id)}" data-favorite="${item.preferito === true}" title="${item.preferito ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}" aria-label="${item.preferito ? 'Rimuovi' : 'Aggiungi'} ${escapeHtml(item.titolo)} ${item.preferito ? 'dai preferiti' : 'ai preferiti'}">${item.preferito ? '★' : '☆'}</button>`;
   const editButton = `<button class="edit-button" type="button" data-edit-id="${escapeHtml(item.id)}" data-edit-url="${escapeHtml(item.url)}" data-edit-title="${escapeHtml(item.titolo)}" data-edit-description="${escapeHtml(item.descrizione)}" data-edit-thumbnail="${escapeHtml(item.thumbnail)}" data-edit-tags="${escapeHtml((item.tags ?? []).join('|'))}">Modifica</button>`;
 
   return `<article class="card">
     <a class="card-link" href="${escapeHtml(itemHref(item))}" aria-label="Apri ${escapeHtml(item.titolo)}"></a>
     ${deleteButton}
+    ${favoriteButton}
     ${editButton}
     ${thumbnail}
     <span class="card-copy">
@@ -227,6 +232,36 @@ function renderPendingSection(items: DigestItem[]): string {
 }
 
 function pageScript(): string {
+  const favoriteBehavior = `
+    document.addEventListener('click', async (event) => {
+      const button = event.target.closest('[data-favorite-id]');
+      if (!button) return;
+      event.preventDefault();
+      if (!requireToken(null)) return;
+      button.disabled = true;
+      try {
+        const response = await fetch('/digest-items/' + encodeURIComponent(button.dataset.favoriteId) + '/preferito', {
+          method: 'POST',
+          headers: { 'X-Digest-Token': digestToken }
+        });
+        const result = await response.json().catch(() => ({}));
+        if (response.status === 401) {
+          forgetInvalidToken();
+          throw new Error('Token non valido.');
+        }
+        if (!response.ok) throw new Error(result.error || 'Aggiornamento preferito non riuscito');
+        const favorite = result.preferito === true;
+        button.dataset.favorite = String(favorite);
+        button.textContent = favorite ? '★' : '☆';
+        button.title = favorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti';
+        button.setAttribute('aria-label', favorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti');
+        if (!favorite && window.location.pathname === '/preferiti') window.location.reload();
+      } catch (error) {
+        window.alert(error instanceof Error ? error.message : 'Aggiornamento preferito non riuscito');
+      } finally {
+        button.disabled = false;
+      }
+    });`;
   const editBehavior = `
     const editDialog = document.querySelector('[data-edit-dialog]');
     const editForm = document.querySelector('[data-edit-form]');
@@ -419,6 +454,7 @@ function pageScript(): string {
       }
     });
     ${editBehavior}
+    ${favoriteBehavior}
     ${deleteBehavior}
   </script>`;
 }
@@ -440,6 +476,7 @@ export function renderDigestPage(
         ${renderPendingSection(pendingItems)}
         <section class="cards" aria-label="Salvataggi">${items.map((item) => renderCard(item)).join('')}</section>
         ${renderEditDialog()}
+        <a class="footer-link" href="/preferiti${escapeHtml(adminQuery(adminToken))}">★ Preferiti</a><br />
         <a class="footer-link" href="/categorie${escapeHtml(adminQuery(adminToken))}">Categorie →</a><br />
         <a class="footer-link" href="/archivio${escapeHtml(adminQuery(adminToken))}">Archivio →</a>
       </main>${pageScript()}`
@@ -450,6 +487,7 @@ export function renderDigestPage(
         ${renderAddForm()}
         ${renderPendingSection(pendingItems)}
         ${renderEditDialog()}
+        <a class="footer-link" href="/preferiti${escapeHtml(adminQuery(adminToken))}">★ Preferiti</a><br />
         <a class="footer-link" href="/categorie${escapeHtml(adminQuery(adminToken))}">Categorie →</a><br />
         ${pendingItems.length === 0 ? '<div class="empty">Non ci sono ancora elementi archiviati.</div>' : ''}
         <a class="footer-link" href="/archivio${escapeHtml(adminQuery(adminToken))}">Archivio →</a>
@@ -470,6 +508,7 @@ export function renderArchivePage(weeks: string[], adminToken: string | null = n
     <p class="eyebrow">Weekly Digest</p>
     <h1>Archivio</h1>
     ${renderSearchForm('', adminToken)}
+    <a class="footer-link" href="/preferiti${escapeHtml(suffix)}">★ Preferiti</a><br />
     <a class="footer-link" href="/categorie${escapeHtml(suffix)}">Categorie →</a>
     ${list}
     <a class="footer-link" href="/${escapeHtml(suffix)}">← Ultimo digest</a>
@@ -497,6 +536,20 @@ export function renderCategoryPage(tag: DigestTag, items: DigestItem[], adminTok
     <section class="cards" aria-label="Link della categoria">${items.map(renderCard).join('')}</section>
     ${renderEditDialog()}
     <a class="footer-link" href="/categorie${escapeHtml(adminQuery(adminToken))}">← Categorie</a>
+  </main>${pageScript()}`);
+}
+
+export function renderFavoritesPage(items: DigestItem[], adminToken: string | null = null): string {
+  const empty = items.length === 0
+    ? '<div class="empty">Non hai ancora aggiunto preferiti.</div>'
+    : `<section class="cards" aria-label="Preferiti">${items.map(renderCard).join('')}</section>`;
+  return pageShell('Preferiti', `<main class="shell">
+    <p class="eyebrow">Weekly Digest</p>
+    <h1>Preferiti</h1>
+    <p class="summary">${items.length} ${items.length === 1 ? 'link salvato' : 'link salvati'}</p>
+    ${empty}
+    ${renderEditDialog()}
+    <a class="footer-link" href="/archivio${escapeHtml(adminQuery(adminToken))}">← Archivio</a>
   </main>${pageScript()}`);
 }
 

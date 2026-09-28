@@ -10,6 +10,7 @@ import {
   renderCategoriesPage,
   renderCategoryPage,
   renderDigestPage,
+  renderFavoritesPage,
   renderNotFoundPage,
   renderSearchPage,
 } from '../lib/web-pages.js';
@@ -93,6 +94,17 @@ publicPagesRouter.get('/categorie', async (req, res, next) => {
       }
     }
     sendHtml(res, renderCategoriesPage(counts, validAdminToken(req)));
+  } catch (error) {
+    next(error);
+  }
+});
+
+publicPagesRouter.get('/preferiti', async (req, res, next) => {
+  try {
+    const snapshot = await digestItemsCollection.where('preferito', '==', true).get();
+    const items = snapshot.docs.map((document) => ({ ...document.data(), id: document.id }))
+      .sort((left, right) => right.dataAggiunta.toMillis() - left.dataAggiunta.toMillis());
+    sendHtml(res, renderFavoritesPage(items, validAdminToken(req)));
   } catch (error) {
     next(error);
   }

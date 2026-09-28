@@ -241,6 +241,27 @@ digestItemsRouter.post('/classifica-esistenti', requireDigestToken, async (req, 
   }
 });
 
+digestItemsRouter.post('/:id/preferito', requireDigestToken, async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    if (typeof id !== 'string' || !id.trim()) {
+      res.status(400).json({ error: 'ID digest item non valido' });
+      return;
+    }
+    const document = digestItemsCollection.doc(id);
+    const snapshot = await document.get();
+    if (!snapshot.exists) {
+      res.status(404).json({ error: 'Digest item non trovato' });
+      return;
+    }
+    const preferito = snapshot.data()?.preferito !== true;
+    await document.update({ preferito: preferito || null });
+    res.status(200).json({ id, preferito });
+  } catch (error) {
+    next(error);
+  }
+});
+
 digestItemsRouter.patch('/:id', requireDigestToken, async (req, res, next) => {
   try {
     const id = req.params.id;

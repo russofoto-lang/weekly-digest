@@ -9,6 +9,7 @@ import {
   renderSearchPage,
   renderCategoriesPage,
   renderCategoryPage,
+  renderFavoritesPage,
 } from './web-pages.js';
 import type { DigestItem } from '../types/digest-item.js';
 
@@ -109,6 +110,21 @@ test('mostra il cestino e protegge DELETE con il token memorizzato', () => {
 
   const adminHtml = renderDigestPage('2026-W35', [item()], 'secret-token');
   assert.match(adminHtml, /href="\/archivio\?admin=secret-token"/);
+});
+
+test('permette di aggiungere e rimuovere un preferito', () => {
+  const html = renderDigestPage('2026-W35', [item()]);
+  assert.match(html, /class="favorite-button"[^>]+data-favorite-id="articolo-1"/);
+  assert.match(html, />☆<\/button>/);
+  assert.match(html, /\/preferito'/);
+  assert.match(html, /method: 'POST'/);
+  assert.match(html, /button\.textContent = favorite \? '★' : '☆'/);
+
+  const favorites = renderFavoritesPage([item({ preferito: true })]);
+  assert.match(favorites, /<h1>Preferiti<\/h1>/);
+  assert.match(favorites, /data-favorite="true"/);
+  assert.match(favorites, />★<\/button>/);
+  assert.match(renderFavoritesPage([]), /Non hai ancora aggiunto preferiti/);
 });
 
 test('permette di modificare i dettagli di ogni link', () => {

@@ -24,6 +24,7 @@ Endpoint disponibili:
 - `GET /archivio`
 - `GET /categorie`
 - `GET /categoria/:tag`
+- `GET /preferiti`
 - `GET /cerca?q=ai+aziende+piccole`
 - `GET /settimana/:iso`
 
