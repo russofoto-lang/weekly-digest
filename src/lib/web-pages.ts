@@ -33,6 +33,9 @@ function pageShell(title: string, content: string, mode: 'ui' | 'reader' = 'ui')
     : `
       body { background:#f6f5f2; color:#222; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
       .shell { width:100%; max-width:760px; margin:0 auto; padding:28px 16px 56px; }
+      .app-nav { position:sticky; z-index:4; top:0; display:flex; gap:4px; margin:0 -16px 26px; padding:10px 16px; overflow:auto; background:#f6f5f2ee; backdrop-filter:blur(12px); border-bottom:1px solid #e2ddd5; }
+      .app-nav a { flex:0 0 auto; padding:8px 10px; color:#625c54; border-radius:8px; font-size:13px; font-weight:700; text-decoration:none; }
+      .app-nav a[aria-current="page"] { color:#fff; background:#2e2b27; }
       .eyebrow { margin:0 0 8px; color:#746d64; font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
       h1 { margin:0; font-size:clamp(2rem,9vw,3.5rem); line-height:1; letter-spacing:-.045em; }
       .summary { margin:12px 0 28px; color:#6a645c; font-size:15px; }
@@ -66,6 +69,9 @@ function pageShell(title: string, content: string, mode: 'ui' | 'reader' = 'ui')
       .badge { display:inline-block; margin:0 0 6px; padding:2px 7px; border-radius:999px; color:#665f56; background:#eeeae3; font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; }
       .card h2 { margin:0 0 4px; font-size:17px; line-height:1.25; }
       .card p { display:-webkit-box; overflow:hidden; margin:0; color:#6b655d; font-size:14px; line-height:1.4; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+      .card-note { display:block; margin-top:7px; color:#756c62; font-size:12px; font-style:italic; }
+      .card[data-read="true"] { opacity:.74; }
+      .card[data-read="true"] h2 { text-decoration:line-through; text-decoration-color:#c8c1b8; }
       .card-tags { position:relative; z-index:2; display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
       .card-tags a { padding:3px 7px; color:#5f574d; background:#f1ede7; border-radius:999px; font-size:11px; font-weight:700; text-decoration:none; }
       .card-tags a:hover { background:#e4ded4; }
@@ -79,6 +85,8 @@ function pageShell(title: string, content: string, mode: 'ui' | 'reader' = 'ui')
       .favorite-button { position:absolute; z-index:2; top:10px; right:44px; display:grid; width:30px; height:30px; padding:0; place-items:center; color:#8a8178; background:transparent; border:0; border-radius:7px; font-size:19px; line-height:1; cursor:pointer; }
       .favorite-button:hover { color:#9b6a23; background:#faf1dc; }
       .favorite-button[data-favorite="true"] { color:#b67a19; }
+      .read-button { position:absolute; z-index:2; top:10px; right:78px; display:grid; width:30px; height:30px; padding:0; place-items:center; color:#6d7766; background:transparent; border:0; border-radius:7px; font-size:16px; cursor:pointer; }
+      .read-button[data-read="true"] { color:#397044; }
       .edit-button { position:absolute; z-index:2; right:43px; bottom:10px; padding:5px 8px; color:#625c54; background:#f4f1eb; border:0; border-radius:7px; font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
       .edit-button:hover { color:#222; background:#e9e4dc; }
       .edit-dialog { width:min(560px,calc(100% - 24px)); padding:0; border:0; border-radius:14px; box-shadow:0 20px 60px #0004; }
@@ -94,7 +102,7 @@ function pageShell(title: string, content: string, mode: 'ui' | 'reader' = 'ui')
       .weeks { display:grid; gap:10px; margin-top:28px; }
       .week-link { display:flex; align-items:center; justify-content:space-between; padding:17px 18px; color:#222; text-decoration:none; background:#fff; border:1px solid #dedbd5; border-radius:10px; font-weight:700; }
       .empty { margin:28px 0; padding:24px; color:#6b655d; background:#fff; border:1px solid #dedbd5; border-radius:12px; }
-      @media (min-width:600px) { .shell { padding-top:48px; } .card { padding:16px; } }
+      @media (min-width:600px) { .shell { padding-top:48px; } .app-nav { margin:0 0 30px; border:1px solid #e2ddd5; border-radius:12px; } .card { padding:16px; } }
     `;
 
   return `<!doctype html>
@@ -129,21 +137,35 @@ function renderCard(item: DigestItem): string {
   const tags = (item.tags ?? []).map((tag) => `<a href="/categoria/${encodeURIComponent(tag)}">${escapeHtml(tag)}</a>`).join('');
   const deleteButton = `<button class="delete-button" type="button" data-delete-id="${escapeHtml(item.id)}" title="Elimina" aria-label="Elimina ${escapeHtml(item.titolo)}">🗑</button>`;
   const favoriteButton = `<button class="favorite-button" type="button" data-favorite-id="${escapeHtml(item.id)}" data-favorite="${item.preferito === true}" title="${item.preferito ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}" aria-label="${item.preferito ? 'Rimuovi' : 'Aggiungi'} ${escapeHtml(item.titolo)} ${item.preferito ? 'dai preferiti' : 'ai preferiti'}">${item.preferito ? '★' : '☆'}</button>`;
-  const editButton = `<button class="edit-button" type="button" data-edit-id="${escapeHtml(item.id)}" data-edit-url="${escapeHtml(item.url)}" data-edit-title="${escapeHtml(item.titolo)}" data-edit-description="${escapeHtml(item.descrizione)}" data-edit-thumbnail="${escapeHtml(item.thumbnail)}" data-edit-tags="${escapeHtml((item.tags ?? []).join('|'))}">Modifica</button>`;
+  const readButton = `<button class="read-button" type="button" data-read-id="${escapeHtml(item.id)}" data-read="${item.letto === true}" title="${item.letto ? 'Segna da leggere' : 'Segna come letto'}" aria-label="${item.letto ? 'Segna da leggere' : 'Segna come letto'}">${item.letto ? '✓' : '○'}</button>`;
+  const editButton = `<button class="edit-button" type="button" data-edit-id="${escapeHtml(item.id)}" data-edit-url="${escapeHtml(item.url)}" data-edit-title="${escapeHtml(item.titolo)}" data-edit-description="${escapeHtml(item.descrizione)}" data-edit-thumbnail="${escapeHtml(item.thumbnail)}" data-edit-note="${escapeHtml(item.notaPersonale ?? '')}" data-edit-tags="${escapeHtml((item.tags ?? []).join('|'))}">Modifica</button>`;
 
-  return `<article class="card">
+  return `<article class="card" data-read="${item.letto === true}">
     <a class="card-link" href="${escapeHtml(itemHref(item))}" aria-label="Apri ${escapeHtml(item.titolo)}"></a>
     ${deleteButton}
     ${favoriteButton}
+    ${readButton}
     ${editButton}
     ${thumbnail}
     <span class="card-copy">
       <span class="badge">${badge}</span>
       <h2>${escapeHtml(item.titolo)}</h2>
       <p>${escapeHtml(item.descrizione)}</p>
+      ${item.notaPersonale ? `<span class="card-note">${escapeHtml(item.notaPersonale)}</span>` : ''}
       ${tags ? `<span class="card-tags">${tags}</span>` : ''}
     </span>
   </article>`;
+}
+
+function renderAppNav(active: 'raccolta' | 'preferiti' | 'lettura' | 'categorie' | 'archivio', adminToken: string | null): string {
+  const suffix = adminQuery(adminToken);
+  const links = [
+    ['raccolta', '/', 'Raccolta'], ['lettura', '/da-leggere', 'Da leggere'],
+    ['preferiti', '/preferiti', 'Preferiti'], ['categorie', '/categorie', 'Categorie'], ['archivio', '/archivio', 'Archivio'],
+  ] as const;
+  return `<nav class="app-nav" aria-label="Navigazione principale">${links.map(([key, href, label]) =>
+    `<a href="${href}${escapeHtml(suffix)}"${key === active ? ' aria-current="page"' : ''}>${label}</a>`,
+  ).join('')}</nav>`;
 }
 
 function renderEditDialog(): string {
@@ -162,6 +184,9 @@ function renderEditDialog(): string {
       </label>
       <label>URL thumbnail <span>(facoltativo)</span>
         <input name="thumbnail" type="url" inputmode="url" autocomplete="url" />
+      </label>
+      <label>Nota personale <span>(facoltativa)</span>
+        <textarea name="notaPersonale" rows="2" maxlength="1000" placeholder="Perché l'hai salvato o come vuoi usarlo"></textarea>
       </label>
       <fieldset class="tag-choices">
         <legend>Categorie (massimo 3)</legend>
@@ -218,14 +243,15 @@ function renderSearchForm(query = '', adminToken: string | null = null): string 
       <button type="submit">Cerca</button>
     </span>
     ${adminToken ? `<input type="hidden" name="admin" value="${escapeHtml(adminToken)}" />` : ''}
+    <a class="search-note" href="/preferiti${escapeHtml(adminQuery(adminToken))}">Mostra solo preferiti</a>
   </form>`;
 }
 
 function renderPendingSection(items: DigestItem[]): string {
   if (items.length === 0) return '';
   return `<section class="pending-section" aria-labelledby="pending-title">
-    <p class="eyebrow">Disponibili subito</p>
-    <h2 class="section-title" id="pending-title">Da leggere</h2>
+    <p class="eyebrow">In arrivo</p>
+    <h2 class="section-title" id="pending-title">Prossimo digest</h2>
     <p class="section-summary">${escapeHtml(formatDigestSummary(items))}</p>
     <div class="cards">${items.map((item) => renderCard(item)).join('')}</div>
   </section>`;
@@ -262,6 +288,30 @@ function pageScript(): string {
         button.disabled = false;
       }
     });`;
+  const readBehavior = `
+    document.addEventListener('click', async (event) => {
+      const button = event.target.closest('[data-read-id]');
+      if (!button) return;
+      event.preventDefault();
+      if (!requireToken(null)) return;
+      button.disabled = true;
+      try {
+        const response = await fetch('/digest-items/' + encodeURIComponent(button.dataset.readId) + '/letto', {
+          method: 'POST', headers: { 'X-Digest-Token': digestToken }
+        });
+        const result = await response.json().catch(() => ({}));
+        if (response.status === 401) { forgetInvalidToken(); throw new Error('Token non valido.'); }
+        if (!response.ok) throw new Error(result.error || 'Aggiornamento lettura non riuscito');
+        const read = result.letto === true;
+        button.dataset.read = String(read);
+        button.textContent = read ? '✓' : '○';
+        button.title = read ? 'Segna da leggere' : 'Segna come letto';
+        button.closest('.card').dataset.read = String(read);
+        if (read && window.location.pathname === '/da-leggere') window.location.reload();
+      } catch (error) {
+        window.alert(error instanceof Error ? error.message : 'Aggiornamento lettura non riuscito');
+      } finally { button.disabled = false; }
+    });`;
   const editBehavior = `
     const editDialog = document.querySelector('[data-edit-dialog]');
     const editForm = document.querySelector('[data-edit-form]');
@@ -274,6 +324,7 @@ function pageScript(): string {
       editForm.elements.titolo.value = button.dataset.editTitle || '';
       editForm.elements.descrizione.value = button.dataset.editDescription || '';
       editForm.elements.thumbnail.value = button.dataset.editThumbnail || '';
+      editForm.elements.notaPersonale.value = button.dataset.editNote || '';
       const selectedTags = new Set((button.dataset.editTags || '').split('|'));
       editForm.querySelectorAll('[name="tags"]').forEach((input) => { input.checked = selectedTags.has(input.value); });
       editForm.querySelector('[data-edit-status]').textContent = '';
@@ -301,6 +352,7 @@ function pageScript(): string {
             titolo: form.elements.titolo.value,
             descrizione: form.elements.descrizione.value,
             thumbnail: form.elements.thumbnail.value,
+            notaPersonale: form.elements.notaPersonale.value,
             tags: [...form.querySelectorAll('[name="tags"]:checked')].map((input) => input.value)
           })
         });
@@ -455,6 +507,7 @@ function pageScript(): string {
     });
     ${editBehavior}
     ${favoriteBehavior}
+    ${readBehavior}
     ${deleteBehavior}
   </script>`;
 }
@@ -468,29 +521,25 @@ export function renderDigestPage(
   const dateRange = settimana ? formatIsoWeekDateRange(settimana) : null;
   const content = settimana
     ? `<main class="shell">
-        <p class="eyebrow">Digest settimanale</p>
-        <h1>${escapeHtml(dateRange ?? '')}</h1>
+        ${renderAppNav('raccolta', adminToken)}
+        <p class="eyebrow">La tua raccolta · ${escapeHtml(dateRange ?? '')}</p>
+        <h1>Da esplorare</h1>
         <p class="summary">${escapeHtml(formatDigestSummary(items))}</p>
         ${renderSearchForm('', adminToken)}
         ${renderAddForm()}
         ${renderPendingSection(pendingItems)}
         <section class="cards" aria-label="Salvataggi">${items.map((item) => renderCard(item)).join('')}</section>
         ${renderEditDialog()}
-        <a class="footer-link" href="/preferiti${escapeHtml(adminQuery(adminToken))}">★ Preferiti</a><br />
-        <a class="footer-link" href="/categorie${escapeHtml(adminQuery(adminToken))}">Categorie →</a><br />
-        <a class="footer-link" href="/archivio${escapeHtml(adminQuery(adminToken))}">Archivio →</a>
       </main>${pageScript()}`
     : `<main class="shell">
-        <p class="eyebrow">Digest settimanale</p>
+        ${renderAppNav('raccolta', adminToken)}
+        <p class="eyebrow">La tua raccolta</p>
         <h1>Nessun digest</h1>
         ${renderSearchForm('', adminToken)}
         ${renderAddForm()}
         ${renderPendingSection(pendingItems)}
         ${renderEditDialog()}
-        <a class="footer-link" href="/preferiti${escapeHtml(adminQuery(adminToken))}">★ Preferiti</a><br />
-        <a class="footer-link" href="/categorie${escapeHtml(adminQuery(adminToken))}">Categorie →</a><br />
         ${pendingItems.length === 0 ? '<div class="empty">Non ci sono ancora elementi archiviati.</div>' : ''}
-        <a class="footer-link" href="/archivio${escapeHtml(adminQuery(adminToken))}">Archivio →</a>
       </main>${pageScript()}`;
 
   return pageShell(dateRange ? `Digest ${dateRange}` : 'Weekly Digest', content);
@@ -505,13 +554,11 @@ export function renderArchivePage(weeks: string[], adminToken: string | null = n
     : '<div class="empty">Non ci sono ancora settimane archiviate.</div>';
 
   return pageShell('Archivio', `<main class="shell">
+    ${renderAppNav('archivio', adminToken)}
     <p class="eyebrow">Weekly Digest</p>
     <h1>Archivio</h1>
     ${renderSearchForm('', adminToken)}
-    <a class="footer-link" href="/preferiti${escapeHtml(suffix)}">★ Preferiti</a><br />
-    <a class="footer-link" href="/categorie${escapeHtml(suffix)}">Categorie →</a>
     ${list}
-    <a class="footer-link" href="/${escapeHtml(suffix)}">← Ultimo digest</a>
   </main>`);
 }
 
@@ -520,22 +567,22 @@ export function renderCategoriesPage(counts: Map<DigestTag, number>, adminToken:
     .map((tag) => `<a class="category-link" href="/categoria/${encodeURIComponent(tag)}${escapeHtml(adminQuery(adminToken))}"><span>${escapeHtml(tag)}</span><span>${counts.get(tag)}</span></a>`)
     .join('');
   return pageShell('Categorie', `<main class="shell">
+    ${renderAppNav('categorie', adminToken)}
     <p class="eyebrow">Weekly Digest</p>
     <h1>Categorie</h1>
     <p class="summary">Un link può comparire in più categorie.</p>
     <nav class="weeks" aria-label="Categorie">${list || '<div class="empty">Nessun link classificato.</div>'}</nav>
-    <a class="footer-link" href="/archivio${escapeHtml(adminQuery(adminToken))}">← Archivio</a>
   </main>`);
 }
 
 export function renderCategoryPage(tag: DigestTag, items: DigestItem[], adminToken: string | null = null): string {
   return pageShell(tag, `<main class="shell">
+    ${renderAppNav('categorie', adminToken)}
     <p class="eyebrow">Categoria</p>
     <h1>${escapeHtml(tag)}</h1>
     <p class="summary">${items.length} link</p>
     <section class="cards" aria-label="Link della categoria">${items.map(renderCard).join('')}</section>
     ${renderEditDialog()}
-    <a class="footer-link" href="/categorie${escapeHtml(adminQuery(adminToken))}">← Categorie</a>
   </main>${pageScript()}`);
 }
 
@@ -544,12 +591,12 @@ export function renderFavoritesPage(items: DigestItem[], adminToken: string | nu
     ? '<div class="empty">Non hai ancora aggiunto preferiti.</div>'
     : `<section class="cards" aria-label="Preferiti">${items.map(renderCard).join('')}</section>`;
   return pageShell('Preferiti', `<main class="shell">
+    ${renderAppNav('preferiti', adminToken)}
     <p class="eyebrow">Weekly Digest</p>
     <h1>Preferiti</h1>
     <p class="summary">${items.length} ${items.length === 1 ? 'link salvato' : 'link salvati'}</p>
     ${empty}
     ${renderEditDialog()}
-    <a class="footer-link" href="/archivio${escapeHtml(adminQuery(adminToken))}">← Archivio</a>
   </main>${pageScript()}`);
 }
 
@@ -568,6 +615,7 @@ export function renderSearchPage(
     ? '<p class="search-note">La traduzione non è disponibile ora: alcuni risultati in altre lingue potrebbero mancare.</p>'
     : '';
   return pageShell('Cerca nel digest', `<main class="shell">
+    ${renderAppNav('raccolta', adminToken)}
     <p class="eyebrow">Weekly Digest</p>
     <h1>Cerca</h1>
     ${renderSearchForm(query, adminToken)}
@@ -575,7 +623,20 @@ export function renderSearchPage(
     ${translationNote}
     <section class="cards" aria-label="Risultati della ricerca">${result.items.map(renderCard).join('')}</section>
     ${renderEditDialog()}
-    <a class="footer-link" href="/archivio${escapeHtml(adminQuery(adminToken))}">← Archivio</a>
+  </main>${pageScript()}`);
+}
+
+export function renderReadingListPage(items: DigestItem[], adminToken: string | null = null): string {
+  const content = items.length
+    ? `<section class="cards" aria-label="Da leggere">${items.map(renderCard).join('')}</section>`
+    : '<div class="empty">Hai letto tutti i link salvati.</div>';
+  return pageShell('Da leggere', `<main class="shell">
+    ${renderAppNav('lettura', adminToken)}
+    <p class="eyebrow">La tua raccolta</p>
+    <h1>Da leggere</h1>
+    <p class="summary">${items.length} ${items.length === 1 ? 'link da leggere' : 'link da leggere'}</p>
+    ${content}
+    ${renderEditDialog()}
   </main>${pageScript()}`);
 }
 

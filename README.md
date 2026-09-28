@@ -25,8 +25,11 @@ Endpoint disponibili:
 - `GET /categorie`
 - `GET /categoria/:tag`
 - `GET /preferiti`
+- `GET /da-leggere`
 - `GET /cerca?q=ai+aziende+piccole`
 - `GET /settimana/:iso`
+- `POST /digest-items/:id/preferito`
+- `POST /digest-items/:id/letto`
 
 Le route POST protette richiedono l'header `X-Digest-Token` uguale a `DIGEST_TOKEN`.
 

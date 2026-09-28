@@ -10,6 +10,7 @@ import {
   renderCategoriesPage,
   renderCategoryPage,
   renderFavoritesPage,
+  renderReadingListPage,
 } from './web-pages.js';
 import type { DigestItem } from '../types/digest-item.js';
 
@@ -127,6 +128,19 @@ test('permette di aggiungere e rimuovere un preferito', () => {
   assert.match(renderFavoritesPage([]), /Non hai ancora aggiunto preferiti/);
 });
 
+test('mostra una navigazione coerente, stato di lettura e nota personale', () => {
+  const html = renderDigestPage('2026-W35', [item({ notaPersonale: 'Da usare per i clienti' })]);
+  assert.match(html, /aria-label="Navigazione principale"/);
+  assert.match(html, /Raccolta/);
+  assert.match(html, /href="\/da-leggere"/);
+  assert.match(html, /data-read-id="articolo-1"/);
+  assert.match(html, /\/letto'/);
+  assert.match(html, /Da usare per i clienti/);
+  assert.match(html, /name="notaPersonale"/);
+  assert.match(html, /notaPersonale: form\.elements\.notaPersonale\.value/);
+  assert.match(renderReadingListPage([]), /Hai letto tutti i link salvati/);
+});
+
 test('permette di modificare i dettagli di ogni link', () => {
   const html = renderDigestPage('2026-W35', [item()]);
 
@@ -169,7 +183,7 @@ test('permette di aggiungere link anche prima del primo digest', () => {
   assert.match(html, /href="\/archivio"/);
 });
 
-test('mostra subito gli elementi pending nella sezione Da leggere', () => {
+test('mostra subito gli elementi pending nella sezione Prossimo digest', () => {
   const pendingArticle = item({
     id: 'pending-1',
     stato: 'pending',
@@ -177,8 +191,8 @@ test('mostra subito gli elementi pending nella sezione Da leggere', () => {
   });
   const html = renderDigestPage('2026-W35', [item()], null, [pendingArticle]);
 
-  assert.match(html, /Disponibili subito/);
-  assert.match(html, /id="pending-title">Da leggere<\/h2>/);
+  assert.match(html, /In arrivo/);
+  assert.match(html, /id="pending-title">Prossimo digest<\/h2>/);
   assert.match(html, /Articolo appena salvato/);
   assert.match(html, /href="\/leggi\/pending-1"/);
 });
@@ -198,7 +212,7 @@ test('un elemento manuale senza testo apre direttamente URL originale', () => {
 
 test('mostra i pending anche se non esiste ancora un digest archiviato', () => {
   const html = renderDigestPage(null, [], null, [item({ stato: 'pending' })]);
-  assert.match(html, /Da leggere/);
+  assert.match(html, /Prossimo digest/);
   assert.doesNotMatch(html, /Non ci sono ancora elementi archiviati/);
 });
 

@@ -11,6 +11,7 @@ import {
   renderCategoryPage,
   renderDigestPage,
   renderFavoritesPage,
+  renderReadingListPage,
   renderNotFoundPage,
   renderSearchPage,
 } from '../lib/web-pages.js';
@@ -105,6 +106,18 @@ publicPagesRouter.get('/preferiti', async (req, res, next) => {
     const items = snapshot.docs.map((document) => ({ ...document.data(), id: document.id }))
       .sort((left, right) => right.dataAggiunta.toMillis() - left.dataAggiunta.toMillis());
     sendHtml(res, renderFavoritesPage(items, validAdminToken(req)));
+  } catch (error) {
+    next(error);
+  }
+});
+
+publicPagesRouter.get('/da-leggere', async (req, res, next) => {
+  try {
+    const snapshot = await digestItemsCollection.get();
+    const items = snapshot.docs.map((document) => ({ ...document.data(), id: document.id }))
+      .filter((item) => item.letto !== true)
+      .sort((left, right) => right.dataAggiunta.toMillis() - left.dataAggiunta.toMillis());
+    sendHtml(res, renderReadingListPage(items, validAdminToken(req)));
   } catch (error) {
     next(error);
   }

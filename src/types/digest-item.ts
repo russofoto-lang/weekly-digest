@@ -20,6 +20,8 @@ export interface DigestItem {
   stato: DigestItemStatus;
   settimana: string;
   preferito?: true;
+  letto?: true;
+  notaPersonale?: string;
   tags?: DigestTag[];
   tagsManual?: true;
   troncato?: true;

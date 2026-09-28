@@ -81,6 +81,10 @@ function parseUpdateInput(body: unknown): UpdateDigestItemInput {
   }
 }
 
+function optionalPersonalNote(value: unknown): string {
+  return optionalString(value, 'nota personale', 1_000);
+}
+
 digestItemsRouter.get('/', async (req, res, next) => {
   try {
     const settimana = nonEmptyString(req.query.settimana)
@@ -262,6 +266,27 @@ digestItemsRouter.post('/:id/preferito', requireDigestToken, async (req, res, ne
   }
 });
 
+digestItemsRouter.post('/:id/letto', requireDigestToken, async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    if (typeof id !== 'string' || !id.trim()) {
+      res.status(400).json({ error: 'ID digest item non valido' });
+      return;
+    }
+    const document = digestItemsCollection.doc(id);
+    const snapshot = await document.get();
+    if (!snapshot.exists) {
+      res.status(404).json({ error: 'Digest item non trovato' });
+      return;
+    }
+    const letto = snapshot.data()?.letto !== true;
+    await document.update({ letto: letto || null });
+    res.status(200).json({ id, letto });
+  } catch (error) {
+    next(error);
+  }
+});
+
 digestItemsRouter.patch('/:id', requireDigestToken, async (req, res, next) => {
   try {
     const id = req.params.id;
@@ -271,7 +296,13 @@ digestItemsRouter.patch('/:id', requireDigestToken, async (req, res, next) => {
     }
 
     const input = parseUpdateInput(req.body);
-    const updates = { ...input, url: normalizeUrl(input.url), tagsManual: true as const };
+    const note = optionalPersonalNote((req.body as Record<string, unknown>).notaPersonale);
+    const updates = {
+      ...input,
+      url: normalizeUrl(input.url),
+      notaPersonale: note,
+      tagsManual: true as const,
+    };
     const document = digestItemsCollection.doc(id);
     const snapshot = await document.get();
     if (!snapshot.exists) {
